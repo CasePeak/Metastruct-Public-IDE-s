@@ -1,0 +1,99 @@
+local api_key = "YOURKEYHERE"  -- Replace with your Last.fm API key
+local username = "YOURUSERNAMEHERE"  -- Replace with your Last.fm username
+
+local currentSongText = ""
+local rtchatActive = false  -- Flag to track if RTChat is active
+_RT = true
+
+-- Function to URL-encode strings (important for API calls)
+local function urlEncode(str)
+    if str then
+        str = string.gsub(str, "\n", "\r\n")
+        str = string.gsub(str, "([^%w ])", function(c)
+            return string.format("%%%02X", string.byte(c))
+        end)
+        str = string.gsub(str, " ", "+")
+    end
+    return str
+end
+
+-- This function fetches the currently playing song from Last.fm
+local function FetchCurrentSong()
+    if not _RT then return end  -- Only update if RT is active
+
+    local request_url = "http://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=" .. urlEncode(username) .. "&api_key=" .. urlEncode(api_key) .. "&format=json&limit=1"
+    
+    http.Fetch(
+        request_url,
+        function(body, len, headers, code)
+            local data = util.JSONToTable(body)
+            if data and data.recenttracks and data.recenttracks.track and data.recenttracks.track[1] then
+                local track = data.recenttracks.track[1]
+                local artist = track.artist["#text"]
+                local song_title = track.name
+                local now_playing = track["@attr"] and track["@attr"].nowplaying
+
+                if now_playing then
+                    currentSongText = "[Last.FM: Now Playing] " .. artist .. " - " .. song_title
+                    if not rtchatActive then
+                        StartRTChat()
+                    end
+                else
+                    currentSongText = ""  -- Clear text when no song is playing
+                    if rtchatActive then
+                        StopRTChat()
+                    end
+                end
+            else
+                currentSongText = ""  -- Clear text when no song is playing
+                if rtchatActive then
+                    StopRTChat()
+                end
+            end
+        end,
+        function(error)
+            print("Failed to fetch Last.fm data: " .. error)
+            currentSongText = ""  -- Clear text on error
+            if rtchatActive then
+                StopRTChat()
+            end
+        end
+    )
+end
+
+-- Function to obfuscate chat input with song info
+function RTChat()
+    if not _RT then return end  -- Ensure RT is active before updating the chat
+    if currentSongText ~= "" then
+        rtchat.StartChat()  -- Assuming this opens the chat
+        rtchat.ChatTextChanged(currentSongText)
+    end
+end
+
+-- Function to start the RTChat hook and timers
+function StartRTChat()
+    if rtchatActive then return end  -- Prevent starting if already active
+    rtchatActive = true
+    timer.Create("updateRTChat", 3, 0, RTChat)
+    print("RTChat started.")
+end
+
+-- Function to stop the RTChat hook and timers
+function StopRTChat()
+    if not rtchatActive then return end  -- Prevent stopping if already inactive
+    rtchatActive = false
+    timer.Remove("updateRTChat")
+    print("RTChat stopped.")
+end
+
+-- Stop the RTChat functionality entirely
+function RTStop()
+    _RT = false
+    StopRTChat()
+    timer.Remove("fetchSong")
+    print("RTChat functionality completely stopped.")
+end
+
+-- Start fetching the song info periodically
+FetchCurrentSong()  -- Fetch song info immediately when starting
+timer.Create("fetchSong", 3, 0, FetchCurrentSong)  -- Update the song info every x seconds
