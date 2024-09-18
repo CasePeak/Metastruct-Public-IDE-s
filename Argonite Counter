@@ -1,0 +1,20 @@
+@name Argonite Counter
+@inputs Counter
+@outputs MilestoneReached
+@persist LastMilestone
+
+if (first()) {
+    LastMilestone = -1
+    print("Counter initialized.")
+}
+
+# Check if the counter hits 0, 50, 100, or 150, and print if it changes.
+if (Counter == 0 | Counter == 50 | Counter == 100 | Counter == 150) {
+    if (Counter != LastMilestone) {
+        print("Argonite Collected: " + Counter)
+        LastMilestone = Counter
+        MilestoneReached = 1
+    }
+} else {
+    MilestoneReached = 0
+}
