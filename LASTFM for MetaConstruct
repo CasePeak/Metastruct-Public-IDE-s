@@ -96,4 +96,4 @@ end
 
 -- Start fetching the song info periodically
 FetchCurrentSong()  -- Fetch song info immediately when starting
-timer.Create("fetchSong", 3, 0, FetchCurrentSong)  -- Update the song info every x seconds
+timer.Create("fetchSong", 3, 0, FetchCurrentSong)  -- Update the song info every x seconds, Don't set it too low you buffoon!
